@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+import os
+import sys
+import argparse
+
+from functions import *
+
+
+# parse arguments from the cli.
+def process_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Print more output")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    if os.geteuid() == 0 and not path_exists("/tmp/.root_ok"):
+        print_error("Please start the script as non-root/without sudo")
+        exit(1)
+
+    args = process_args()
+
+    # Restart script as root
+    if not os.geteuid() == 0:
+        # create empty file to confirm script was started as non-root
+        with open("/tmp/.root_ok", "w") as file:
+            file.write("")
+        sudo_args = ['sudo', sys.executable] + sys.argv + [os.environ]
+        os.execlpe('sudo', *sudo_args)
+
+    # delete file to confirm script was started as root
+    rmfile("/tmp/.root_ok")
+
+    print_error("Not ready for use yet")
+    exit(1)
+
+    # TODO: Check if zram is already enabled and ask user if they are sure they want to modify it
+
+    bash("modprobe zram")
+    # autoload zram module on boot
+    with open("/etc/modules-load.d/zram.conf", "w") as file:
+        file.write("zram")
